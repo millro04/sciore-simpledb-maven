@@ -12,6 +12,7 @@ import simpledb.file.*;
  *
  */
 class BasicBufferMgr {
+<<<<<<< HEAD
 
     private Buffer[] bufferpool;
     private int numAvailable;
