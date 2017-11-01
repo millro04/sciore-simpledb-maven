@@ -57,6 +57,7 @@ public class BufferMgr {
          }
          if (buff == null)
             throw new BufferAbortException();
+         bufferMgr.moveCount += 1;
          return buff;
       }
       catch(InterruptedException e) {
@@ -64,6 +65,9 @@ public class BufferMgr {
       }
    }
    
+   public void PrintContentsOfBuffer() {
+       this.bufferMgr.PrintContentsOfBuffers();
+   }
    /**
     * Pins a buffer to a new block in the specified file, 
     * potentially waiting until a buffer becomes available.

@@ -12,11 +12,11 @@ import simpledb.file.*;
  *
  */
 class BasicBufferMgr {
-<<<<<<< HEAD
 
     private Buffer[] bufferpool;
     private int numAvailable;
     private int strategy;
+    public int moveCount = 0;
 
     /**
      * Creates a buffer manager having the specified number of buffer slots.
@@ -71,7 +71,9 @@ class BasicBufferMgr {
         if (!buff.isPinned()) {
             numAvailable--;
         }
-        buff.pin();
+        moveCount += 1;
+
+        buff.pin(moveCount);
         return buff;
     }
 
@@ -91,7 +93,7 @@ class BasicBufferMgr {
         }
         buff.assignToNew(filename, fmtr);
         numAvailable--;
-        buff.pin();
+        buff.pin(this.moveCount);
         return buff;
     }
 
@@ -101,7 +103,8 @@ class BasicBufferMgr {
      * @param buff the buffer to be unpinned
      */
     synchronized void unpin(Buffer buff) {
-        buff.unpin();
+        moveCount += 1;
+        buff.unpin(moveCount);
         if (!buff.isPinned()) {
             numAvailable++;
         }
@@ -126,6 +129,7 @@ class BasicBufferMgr {
         return null;
     }
 
+
     public Buffer[] getBuffers() {
         return this.bufferpool;
     }
@@ -137,17 +141,41 @@ class BasicBufferMgr {
     private Buffer FindLowestTimeReadIn() {
         Buffer winningBuffer = this.bufferpool[0];
         for (Buffer buff : this.bufferpool) {
-            if (buff.timeReadIn.before(winningBuffer.timeReadIn)) {
+            if (buff.moveReadIn < winningBuffer.moveReadIn && !buff.isPinned()) {
                 winningBuffer = buff;
             }
         }
+
         return winningBuffer;
+    }
+
+        private Buffer FindHighestTimeReadIn() {
+        Buffer winningBuffer = this.bufferpool[0];
+        for (Buffer buff : this.bufferpool) {
+            if (buff.moveReadIn > winningBuffer.moveReadIn) {
+                winningBuffer = buff;
+            }
+        }
+
+        return winningBuffer;
+    }
+    
+    public void PrintContentsOfBuffers() {
+        System.out.println("--------------------------------------");
+
+        for (Buffer buff : this.bufferpool) {
+            System.out.println("Is pinned: " + buff.isPinned());
+            System.out.println("Move read: " + buff.moveReadIn);
+            System.out.println("Move unpinned: " + buff.moveUnpinned);
+            System.out.println("Contents: " + buff.block().number());
+            System.out.println("--------------------------------------");
+        }
     }
 
     private Buffer FindLowestTimeUnpinned() {
         Buffer winningBuffer = this.bufferpool[0];
         for (Buffer buff : this.bufferpool) {
-            if (buff.timeUnpinned.before(winningBuffer.timeUnpinned)) {
+            if (buff.moveUnpinned < winningBuffer.moveUnpinned && !buff.isPinned()) {
                 winningBuffer = buff;
             }
         }
@@ -195,6 +223,23 @@ class BasicBufferMgr {
     }
 
     private Buffer ClockMethod() {
+        //Find the current block
+        Buffer cur = this.FindHighestTimeReadIn();
+        //Start iteration circle with the block after current
+        int curIndex = Arrays.asList(this.bufferpool).indexOf(cur) + 1;
+        if (curIndex == this.bufferpool.length) {
+            curIndex = 0;
+        }
+        System.out.println("Current: " + curIndex);
+        this.PrintContentsOfBuffers();
+        for (int i = 0; i < this.bufferpool.length; i++) {
+            //circularly iterate the array starting with the index after current, and find the first unpinned buffer
+            Buffer nextBuf = this.bufferpool[(i + curIndex) % this.bufferpool.length];
+            if (!nextBuf.isPinned()) {
+                return nextBuf;
+            }
+        }
         return null;
     }
+
 }

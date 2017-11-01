@@ -21,8 +21,8 @@ public class Buffer {
     private int pins = 0;
     private int modifiedBy = -1;  // negative means not modified
     private int logSequenceNumber = -1; // negative means no corresponding log record
-    public Timestamp timeReadIn;
-    public Timestamp timeUnpinned;
+    public int moveReadIn;
+    public int moveUnpinned;
 
     /**
      * Creates a new buffer, wrapping a new {@link simpledb.file.Page page}.
@@ -126,17 +126,18 @@ public class Buffer {
     /**
      * Increases the buffer's pin count.
      */
-    void pin() {
+    void pin(int moveCount) {
         pins++;
-        timeReadIn = new java.sql.Timestamp(Calendar.getInstance().getTime().getTime());
+        this.moveReadIn = moveCount;
     }
+
 
     /**
      * Decreases the buffer's pin count.
      */
-    void unpin() {
+    void unpin(int moveCount) {
         pins--;
-        timeUnpinned = new java.sql.Timestamp(Calendar.getInstance().getTime().getTime());
+        this.moveUnpinned = moveCount;
     }
 
     /**
