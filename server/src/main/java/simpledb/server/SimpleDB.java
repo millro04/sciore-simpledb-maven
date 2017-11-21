@@ -38,16 +38,16 @@ public class SimpleDB {
     */
    public static void init(String dirname) {
       initFileLogAndBufferMgr(dirname);
-      Transaction tx = new Transaction();
+      //Transaction tx = new Transaction();
       boolean isnew = fm.isNew();
       if (isnew)
          System.out.println("creating new database");
       else {
          System.out.println("recovering existing database");
-         tx.recover();
+         //tx.recover();
       }
-      initMetadataMgr(isnew, tx);
-      tx.commit();
+      //initMetadataMgr(isnew, tx);
+      //tx.commit();
    }
    
    // The following initialization methods are useful for 

@@ -27,6 +27,7 @@ public class Transaction extends Thread {
     private static List<Transaction> activeTransactions = new ArrayList<Transaction>();
     private static boolean isCheckpointRunning;
     private BufferList myBuffers = new BufferList();
+    private Object tLock = new Object();
 
     @Override
     public synchronized void run() {
@@ -46,22 +47,27 @@ public class Transaction extends Thread {
      * @throws java.lang.InterruptedException
      */
     public Transaction() {
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException ex) {
-            Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
-        }
 
+        synchronized (tLock) {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
         txnum = nextTxNumber();
 
         recoveryMgr = new RecoveryMgr(txnum);
 
         concurMgr = new ConcurrencyMgr();
         while (isCheckpointRunning) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+
+            synchronized (tLock) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         }
 
@@ -78,6 +84,8 @@ public class Transaction extends Thread {
             }
         }
 
+        String h = "here";
+
     }
 
     /**
@@ -91,6 +99,10 @@ public class Transaction extends Thread {
         myBuffers.unpinAll();
         System.out.println("transaction " + txnum + " committed");
         activeTransactions.remove(this);
+    }
+
+    public void resetTxnum() {
+        txnum = 0;
     }
 
     /**
@@ -240,27 +252,32 @@ public class Transaction extends Thread {
         return nextTxNum;
     }
 
-    private class QuiescentCheckpoint implements Runnable {
+    private class QuiescentCheckpoint extends Thread {
+
+        private Object lock = new Object();
 
         @Override
-        public synchronized void run() {
-
-        }
-
-        public QuiescentCheckpoint() throws Exception {
-            isCheckpointRunning = true;
-            if (activeTransactions.size() > 0) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ex) {
-                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+        public void run() {
+            System.out.println("Starting quiescent checkpoint");
+            Transaction.isCheckpointRunning = true;
+            while (Transaction.activeTransactions.size() > 0) {
+                synchronized (lock) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
             }
             SimpleDB.bufferMgr().flushAll();
             int lsn = new CheckpointRecord().writeToLog();
             SimpleDB.logMgr().flush(lsn);
-            isCheckpointRunning = false;
+            Transaction.isCheckpointRunning = false;
             System.out.println("Finished writing quiescent checkpoint");
+        }
+
+        public QuiescentCheckpoint() throws Exception {
+
         }
 
     }
