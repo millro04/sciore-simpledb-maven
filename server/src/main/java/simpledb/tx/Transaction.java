@@ -17,7 +17,7 @@ import simpledb.tx.recovery.CheckpointRecord;
  *
  * @author Edward Sciore
  */
-public class Transaction {
+public class Transaction extends Thread {
 
     private static int nextTxNum = 0;
     private static final int END_OF_FILE = -1;
@@ -25,9 +25,13 @@ public class Transaction {
     private ConcurrencyMgr concurMgr;
     private int txnum;
     private static List<Transaction> activeTransactions = new ArrayList<Transaction>();
-    //private static List<Transaction> waitList = new ArrayList<Transaction>(); 
-    private static boolean isCheckpointRunning = false;
+    private static boolean isCheckpointRunning;
     private BufferList myBuffers = new BufferList();
+
+    @Override
+    public synchronized void run() {
+
+    }
 
     /**
      * Creates a new transaction and its associated recovery and concurrency
@@ -38,14 +42,24 @@ public class Transaction {
      * {@link simpledb.server.SimpleDB#init(String)} or
      * {@link simpledb.server.SimpleDB#initFileLogAndBufferMgr(String)} or is
      * called first.
+     *
+     * @throws java.lang.InterruptedException
      */
-    public Transaction() throws InterruptedException, Exception {
+    public Transaction() {
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
         txnum = nextTxNumber();
+
         recoveryMgr = new RecoveryMgr(txnum);
+
         concurMgr = new ConcurrencyMgr();
         while (isCheckpointRunning) {
             try {
-                wait(1000);
+                Thread.sleep(1000);
             } catch (InterruptedException ex) {
                 Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -55,17 +69,14 @@ public class Transaction {
 
         if (txnum % 10 == 0) {
 
-            //make a new thread
-            //while active transactions list > 0, thread.sleep
-            //then thread.run
-            QuiescentCheckpoint quiescentCkpt = new QuiescentCheckpoint();
-            Thread t = new Thread(quiescentCkpt);
-            t.start();
+            try {
+                Thread t = new Thread(new QuiescentCheckpoint());
+                t.start();
+
+            } catch (Exception ex) {
+                Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
-
-    }
-
-    public void performQuiescentCheckpoint() throws InterruptedException {
 
     }
 
@@ -92,6 +103,7 @@ public class Transaction {
         concurMgr.release();
         myBuffers.unpinAll();
         System.out.println("transaction " + txnum + " rolled back");
+        activeTransactions.remove(this);
     }
 
     /**
@@ -228,10 +240,15 @@ public class Transaction {
         return nextTxNum;
     }
 
-    private class QuiescentCheckpoint extends Transaction implements Runnable {
+    private class QuiescentCheckpoint implements Runnable {
 
         @Override
-        public void run() {
+        public synchronized void run() {
+
+        }
+
+        public QuiescentCheckpoint() throws Exception {
+            isCheckpointRunning = true;
             if (activeTransactions.size() > 0) {
                 try {
                     Thread.sleep(1000);
@@ -239,14 +256,11 @@ public class Transaction {
                     Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-            isCheckpointRunning = true;
-            SimpleDB.bufferMgr().flushAll(txnum);
+            SimpleDB.bufferMgr().flushAll();
             int lsn = new CheckpointRecord().writeToLog();
             SimpleDB.logMgr().flush(lsn);
-        }
-
-        public QuiescentCheckpoint() throws Exception {
-
+            isCheckpointRunning = false;
+            System.out.println("Finished writing quiescent checkpoint");
         }
 
     }

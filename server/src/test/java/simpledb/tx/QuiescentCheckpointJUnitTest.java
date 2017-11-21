@@ -11,30 +11,52 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
-
+import simpledb.server.SimpleDB;
+import simpledb.tx.Transaction;
 /**
  *
  * @author administrator
  */
 public class QuiescentCheckpointJUnitTest {
+
+    @BeforeClass
+    public static void setUpClass() {
+    }
+
+    @AfterClass
+    public static void tearDownClass() {
+    }
+
+    @Before
+    public void setUp() {
+       SimpleDB.init("testdb");
+    }
+
+    @After
+    public void tearDown() {
+    }
     
     public QuiescentCheckpointJUnitTest() {
     }
     
-    @BeforeClass
-    public static void setUpClass() {
-    }
-    
-    @AfterClass
-    public static void tearDownClass() {
-    }
-    
-    @Before
-    public void setUp() {
-    }
-    
-    @After
-    public void tearDown() {
+    @Test
+    public void QCPUnitTest1() throws Exception {
+        //Create 10 transactions in 10 different threads
+        for (Integer i = 0; i < 9; i++) {
+            Transaction tx;
+            tx = new Transaction();
+            Thread t = new Thread(tx);
+            t.start();      
+            tx.commit();
+        }
+
+        for (Integer i = 0; i < 4; i++) {
+            Transaction tx = new Transaction();
+            Thread t = new Thread(tx);
+            t.start();
+            tx.commit();
+        }
+
     }
 
     // TODO add test methods here.

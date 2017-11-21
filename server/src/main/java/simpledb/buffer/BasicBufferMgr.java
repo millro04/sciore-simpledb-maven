@@ -50,6 +50,13 @@ class BasicBufferMgr {
         }
     }
 
+    synchronized void flushAll() {
+        for (Buffer buff : bufferpool) {
+            buff.flush();
+
+        }
+    }
+
     /**
      * Pins a buffer to the specified block. If there is already a buffer
      * assigned to that block then that buffer is used; otherwise, an unpinned
@@ -129,7 +136,6 @@ class BasicBufferMgr {
         return null;
     }
 
-
     public Buffer[] getBuffers() {
         return this.bufferpool;
     }
@@ -149,7 +155,7 @@ class BasicBufferMgr {
         return winningBuffer;
     }
 
-        private Buffer FindHighestTimeReadIn() {
+    private Buffer FindHighestTimeReadIn() {
         Buffer winningBuffer = this.bufferpool[0];
         for (Buffer buff : this.bufferpool) {
             if (buff.moveReadIn > winningBuffer.moveReadIn) {
@@ -159,7 +165,7 @@ class BasicBufferMgr {
 
         return winningBuffer;
     }
-    
+
     public void PrintContentsOfBuffers() {
         System.out.println("--------------------------------------");
 
