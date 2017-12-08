@@ -95,6 +95,17 @@ public class Schema {
       return fields().contains(fldname);
    }
    
+   public void rename(String field1, String field2) {
+       if (!fields().contains(field1)) {
+           return;
+       }
+       
+       FieldInfo fieldinfo = info.get(field1);
+       info.remove(field1);
+       info.put(field2, fieldinfo);
+      
+   }
+   
    /**
     * Returns the type of the specified field, using the
     * constants in {@link java.sql.Types}.
